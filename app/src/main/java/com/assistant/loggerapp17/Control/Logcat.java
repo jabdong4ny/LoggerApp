@@ -4,42 +4,50 @@ import android.util.Log;
 
 import com.assistant.loggerapp17.Util;
 
-import java.io.File;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 
 public class Logcat {
     public static final String TAG = Logcat.class.getSimpleName();
     Thread thread = null;
     String logFileName = null;
     String archivedPath = null;
+    InputStream is;
 
     public Logcat(String archivedPath) {
         Log.d(TAG, "create !!");
         this.archivedPath = archivedPath;
 
         //이전 logcat 을 지우고 파일에 새 로그을 씀
-        try {
-            Process process = Runtime.getRuntime().exec("logcat -v time");
-            //process = Runtime.getRuntime().exec("logcat -f " + logFile);
-        } catch ( IOException e ) {
-            e.printStackTrace();
-        }
+//        try {
+//            String sCmd = "logcat -v time";// > " + archivedPath +"/logcat.log";
+//            Process process = Runtime.getRuntime().exec(sCmd);
+//            is = process.getInputStream();
+//
+//        } catch ( IOException e ) {
+//            e.printStackTrace();
+//        }
     }
 
-    public void process(){
+    public void process() {
+
     LogCatThread loggerT = new LogCatThread(archivedPath);
     thread = new Thread(loggerT);
     if(thread != null)
     {
         thread.setDaemon(true);
         thread.start();
-        try {
-            Thread.sleep(1000);
-        } catch (Exception e){
-            e.printStackTrace();
-        }
+//        try {
+//            Thread.sleep(1000);
+//        } catch (Exception e){
+//            e.printStackTrace();
+//        }
         //스레드 멈추고 싶으면
-        thread.interrupt();
+        //thread.interrupt();
         }
     }
 
@@ -52,35 +60,66 @@ public class Logcat {
             Log.e(TAG,"thread is null!!");
         }
     }
-
-
 }
+
 class LogCatThread implements Runnable {
     String archivedPath = null;
 
     public LogCatThread(String archivedPath) {
         Log.d(Logcat.TAG, "LogCatThread() : " + archivedPath);
+        this.archivedPath = archivedPath;
     }
 
     public void run() {
         try {
-            while (!Thread.currentThread().isInterrupted()){
+
+            String line;
+            //TODO : 저장할 파일
+            String fileName = Util.newNameFileStr(archivedPath);
+            Process process = null;
+            try {
+                String sCmd = "logcat -v time";// > " + archivedPath +"/logcat.log";
+                process = Runtime.getRuntime().exec(sCmd);
+
+            } catch ( IOException e ) {
+                e.printStackTrace();
+            }
+
+            FileWriter fw = new FileWriter(fileName,true);
+            BufferedWriter bw = new BufferedWriter(fw);
+
+            /*while (!Thread.currentThread().isInterrupted())*/{
                 Log.d(Logcat.TAG,"Thread is aLive ...");
-                File a = Util.newNameFile(archivedPath);
+
+                BufferedReader br = new BufferedReader(new InputStreamReader(process.getInputStream()));
+
+
+                //if(BufferedWriter bw = new BufferedWriter(new FileWriter(filePath, true))){
                 //최초 파일명 갱신
-                while(!Thread.currentThread().isInterrupted()){
+                while(/*(!Thread.currentThread().isInterrupted())
+                        &&*/((line = br.readLine()) != null)
+                ){
                     //100넘는지 확인
+                    //Util.getDiskSpaceByMB(null);
                         //100 넘으면 파일복사 ( 어디로 복사할지 얻어야 함)
                         //파일명 갱신
                         //raw 파일 비우기
                         //new FileOutputStream(FILE_PATH).close();
                     //한줄씩 저장
-                    Thread.sleep(5000);
+                    bw.append(line + "\n");
+                    //Log.d(Logcat.TAG, line + "\n"); //debug log
+//                    try {
+//                        Thread.sleep(1000);
+//                    } catch (Exception e){
+//                        e.printStackTrace();
+//                    }
                 }
-                //
-                Thread.sleep(5000);
+                Log.d(Logcat.TAG,"buffer read finish ...");
+                bw.flush();
+                bw.close();
             }
-        } catch (Exception e){
+        } catch (IOException e){
+            e.printStackTrace();
 
         } finally {
             Log.d(Logcat.TAG,"Thread is Dead ...");
