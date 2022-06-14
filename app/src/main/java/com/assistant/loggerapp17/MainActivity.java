@@ -87,7 +87,7 @@ public class MainActivity extends AppCompatActivity {
             logDirectory = new File(logDirPath);
             Log.d(TAG, "*** onCreate() - appDirectory :: "+appDirectory.getAbsolutePath());
             //appDirectory 폴더 없을 시 생성
-                    if ( !appDirectory.exists() ) {
+            if ( !appDirectory.exists() ) {
                 if(!appDirectory.mkdirs()){
                     Log.e(TAG,"it couldn't be make directory!!1");
                     Log.e(TAG,"end");

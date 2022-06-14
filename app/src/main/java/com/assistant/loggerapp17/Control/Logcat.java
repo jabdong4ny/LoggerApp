@@ -1,15 +1,22 @@
 package com.assistant.loggerapp17.Control;
 
+import android.os.Build;
 import android.util.Log;
+
+import androidx.annotation.RequiresApi;
 
 import com.assistant.loggerapp17.Util;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 
 public class Logcat {
     public static final String TAG = Logcat.class.getSimpleName();
@@ -70,22 +77,25 @@ class LogCatThread implements Runnable {
         this.archivedPath = archivedPath;
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     public void run() {
         try {
-
+            //파일명 갱신
             String line;
             //TODO : 저장할 파일
-            String fileName = Util.newNameFileStr(archivedPath);
+            File fileName = Util.newNameFile(archivedPath);
             Process process = null;
             try {
-                String sCmd = "logcat -v time";// > " + archivedPath +"/logcat.log";
+                String sCmd = "logcat -v threadtime";// > " + archivedPath +"/logcat.log";
+                //String sCmd = "logcat -f " + fileName;// > " + archivedPath +"/logcat.log";
+                //String sCmd = "logcat -d";// > " + archivedPath +"/logcat.log";
                 process = Runtime.getRuntime().exec(sCmd);
 
             } catch ( IOException e ) {
                 e.printStackTrace();
             }
 
-            FileWriter fw = new FileWriter(fileName,true);
+            FileWriter fw = new FileWriter(fileName.getAbsolutePath(),true);
             BufferedWriter bw = new BufferedWriter(fw);
 
             /*while (!Thread.currentThread().isInterrupted())*/{
@@ -95,19 +105,31 @@ class LogCatThread implements Runnable {
 
 
                 //if(BufferedWriter bw = new BufferedWriter(new FileWriter(filePath, true))){
+                int nMB = 0;
                 //최초 파일명 갱신
                 while(/*(!Thread.currentThread().isInterrupted())
                         &&*/((line = br.readLine()) != null)
                 ){
                     //100넘는지 확인
-                    //Util.getDiskSpaceByMB(null);
-                        //100 넘으면 파일복사 ( 어디로 복사할지 얻어야 함)
-                        //파일명 갱신
+                    nMB = (int)Util.getFileSizeMB(fileName);
+                    //남은 공간 확인
+                    //nMB = Util.getDiskSpaceByMB(fileName);
+
+                    //100 넘으면 파일복사 ( 어디로 복사할지 얻어야 함)
+                    if(nMB >= 10)
+                    {
+                        Log.d(Util.TAG,"over 10 MB !!");
+
+                        File newFile = new File(Util.newNameFileStr(archivedPath)); //생성해야하는 파일 위치 : archivedPath
+                        Files.copy(fileName.toPath(), newFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
                         //raw 파일 비우기
-                        //new FileOutputStream(FILE_PATH).close();
+                        new FileOutputStream(fileName).close();
+                    }
+
                     //한줄씩 저장
-                    bw.append(line + "\n");
-                    //Log.d(Logcat.TAG, line + "\n"); //debug log
+                    bw.append(line);
+                    bw.newLine();
+                    //Log.d(Logcat.TAG, line); //debug log
 //                    try {
 //                        Thread.sleep(1000);
 //                    } catch (Exception e){

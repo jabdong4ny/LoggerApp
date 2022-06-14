@@ -4,6 +4,8 @@ import android.os.Environment;
 import android.util.Log;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -31,18 +33,54 @@ public class Util {
     }
 
     /**
+     * newNameFile 파일 naming logcat_yyyymmddhhmmss.log
+     * @param achivedPath : 저장되어야할 파일 위치
+     * @return logfile : 저장되어야 파일 패스가 포함된 file
+     */
+    public static File newNameFile(String achivedPath){
+        File logFile = new File( achivedPath, "logcat_" + getCurrentDateString() + ".txt" );
+        Log.d(TAG, "logFile : "+logFile.getAbsolutePath());
+        return logFile;
+    }
+
+    /**
      * 디스크 용량 getDiskSpace
      * @param path : 용량 확인할 경로
      * @return nUsableMB : 잔여 용량 MB 단위
      */
     public static int getDiskSpaceByMB(File path) {
         //path.getTotalSpace(); total size
-        if(path != null) {
+        if(path == null) {
             Log.e(TAG,"getDiskSpaceByMB : File path is null");
             return 0;
         }
         int nUsableMB = (int) (path.getUsableSpace() / (1024 * 1024)); //unit MB
+        Log.e(TAG,"getDiskSpaceByMB : nUsableMB = "+ nUsableMB);
         return nUsableMB;
+    }
+
+    /**
+     * getFileSizeMB 파일 용량
+     * @param file : 용량을 확인할 파일
+     * @return nUsableMB : 잔여 용량 MB 단위
+     */
+    public static long getFileSizeMB(File file) {
+        if(file == null) {
+            Log.e(TAG,"getFileSizeMB : File is null");
+            return 0;
+        }
+        long bytes = 0;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            try {
+                bytes = Files.size(file.toPath());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        long kilobyte = bytes / 1024;
+        long megabyte = kilobyte / 1024;
+        //Log.d(TAG,"getFileSizeMB = "+ megabyte);
+        return megabyte;
     }
 
 
