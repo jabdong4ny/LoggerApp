@@ -10,6 +10,9 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.provider.Settings;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
+import android.widget.Toast;
 
 import com.assistant.loggerapp17.Control.Logcat;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -29,12 +32,93 @@ import java.io.File;
 import static com.assistant.loggerapp17.Util.isExternalStorageReadable;
 import static com.assistant.loggerapp17.Util.isExternalStorageWritable;
 
+import io.hamed.floatinglayout.callback.FloatingListener;
+import io.hamed.floatinglayout.FloatingLayout;
+
 public class MainActivity extends AppCompatActivity {
 
     public static final String TAG = "LoggerApp17";
     private static final int PERMISSIONS_REQUEST_CODE = 1;
     private ActivityMainBinding binding;
     private Logcat logcat;
+
+    private FloatingLayout floatingLayout = null;
+    private FloatingListener floatingListener = new FloatingListener() {
+        @Override
+        public void onCreateListener(View view) {
+            Button btn = view.findViewById(R.id.btn_close);
+            btn.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    floatingLayout.destroy();
+                    floatingLayout = null;
+                }
+            });
+
+            Button minimum = view.findViewById(R.id.btn_collapse_screen);
+            minimum.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    floatingLayout.destroy();
+                    floatingLayout = null;
+                    onFloatingMinimum();
+                }
+            });
+        } // floating layout 내부 레이아웃 설정
+
+        @Override
+        public void onCloseListener() {
+            Toast.makeText(getApplicationContext(), "Close or Minimum", Toast.LENGTH_SHORT).show();
+        }
+    };
+
+    private FloatingListener floatingListener_minimum = new FloatingListener() {
+        @Override
+        public void onCreateListener(View view) {
+            Button maximum = view.findViewById(R.id.btn_maximum_screen);
+            maximum.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    floatingLayout.destroy();
+                    floatingLayout = null;
+                    showFloating();
+                }
+            });
+        } // floating layout 내부 레이아웃 설정
+
+        @Override
+        public void onCloseListener() {
+            Toast.makeText(getApplicationContext(), "Maximum", Toast.LENGTH_SHORT).show();
+        }
+    };
+    private boolean isNeedPermission() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this);
+    } // 다른 앱 위에서 작동이 가능하게 허용
+
+    // floating layout 실행
+    private void showFloating() {
+        if(floatingLayout == null) {
+            floatingLayout = new FloatingLayout(this, R.layout.float_layout);
+            floatingLayout.setFloatingListener(floatingListener);
+            floatingLayout.create();
+        }
+    }
+
+    // floating layout maximum
+//    private void onFloatingMaximum() {
+//        floatingLayout = new FloatingLayout(this, R.layout.float_layout);
+//        floatingLayout.setFloatingListener(floatingListener);
+//        floatingLayout.create();
+//    }
+
+    // floating layout minimum
+    private void onFloatingMinimum() {
+        if(floatingLayout == null) {
+            floatingLayout = new FloatingLayout(this, R.layout.float_layout_minimum);
+            floatingLayout.setFloatingListener(floatingListener_minimum);
+            floatingLayout.create();
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,6 +151,19 @@ public class MainActivity extends AppCompatActivity {
             //접근 불가능
         }
     }
+
+    public void onClick(View view) {
+        Log.d(TAG, "*** onClick()");
+        switch (view.getId()) {
+            case R.id.btn_open:
+                if (!isNeedPermission())
+                    showFloating();
+                break;
+        }
+    }
+
+    //TODO : app 종료
+    //device.shell("am force-stop <package name>")
 
     private void logcatStart(File logDirectory){
         //TODO : logcat class 생성하면서 저장할 파일 패스 전달
@@ -110,10 +207,9 @@ public class MainActivity extends AppCompatActivity {
                 return ;
             }
         }
-
         logcatStart(logDirectory);
     }
-    
+
     //from oreo
     private void requestPermission() {
         boolean shouldProviceRationale =
@@ -129,6 +225,14 @@ public class MainActivity extends AppCompatActivity {
             //권한있을때.
             //오레오부터 꼭 권한체크내에서 파일 만들어줘야함
             //makeDir();
+        }
+        if(isNeedPermission()) {
+            // overlay permission 요청
+            Intent intent = new Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + getPackageName())
+            );
+            startActivityForResult(intent, 25);
         }
     }
 
@@ -171,5 +275,4 @@ public class MainActivity extends AppCompatActivity {
                 .create()
                 .show();
     }
-
 }
