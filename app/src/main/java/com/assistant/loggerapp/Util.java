@@ -1,7 +1,10 @@
-package com.assistant.loggerapp17;
+package com.assistant.loggerapp;
 
+import android.os.Build;
 import android.os.Environment;
 import android.util.Log;
+
+import androidx.annotation.RequiresApi;
 
 import java.io.File;
 import java.io.IOException;
@@ -64,6 +67,7 @@ public class Util {
      * @param file : 용량을 확인할 파일
      * @return nUsableMB : 잔여 용량 MB 단위
      */
+    @RequiresApi(api = Build.VERSION_CODES.O)
     public static long getFileSizeMB(File file) {
         if(file == null) {
             Log.e(TAG,"getFileSizeMB : File is null");
@@ -76,6 +80,8 @@ public class Util {
             } catch (IOException e) {
                 e.printStackTrace();
             }
+        } else {
+            bytes = file.length();
         }
         long kilobyte = bytes / 1024;
         long megabyte = kilobyte / 1024;

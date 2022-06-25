@@ -1,4 +1,4 @@
-package com.assistant.loggerapp17;
+package com.assistant.loggerapp;
 
 import android.Manifest;
 import android.content.DialogInterface;
@@ -8,13 +8,15 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
-import com.assistant.loggerapp17.Control.Logcat;
+import com.assistant.loggerapp.Control.Logcat;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import androidx.appcompat.app.AlertDialog;
@@ -25,22 +27,31 @@ import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
 
-import com.assistant.loggerapp17.databinding.ActivityMainBinding;
+import com.assistant.loggerapp.databinding.ActivityMainBinding;
 
 import java.io.File;
+import java.io.IOException;
 
-import static com.assistant.loggerapp17.Util.isExternalStorageReadable;
-import static com.assistant.loggerapp17.Util.isExternalStorageWritable;
+import static com.assistant.loggerapp.Util.isExternalStorageReadable;
+import static com.assistant.loggerapp.Util.isExternalStorageWritable;
 
 import io.hamed.floatinglayout.callback.FloatingListener;
 import io.hamed.floatinglayout.FloatingLayout;
+import io.hamed.floatinglayout.service.FloatingService;
 
 public class MainActivity extends AppCompatActivity {
 
-    public static final String TAG = "LoggerApp17";
+    public static final String TAG = "LoggerApp";
     private static final int PERMISSIONS_REQUEST_CODE = 1;
+
     private ActivityMainBinding binding;
     private Logcat logcat;
+    File logDirectory = null;
+    int nStatus = 0; //logging 상태
+    String sPath = null; //로그를 저장할 경로
+
+    TextView textView;
+    Handler handler = new Handler();
 
     private FloatingLayout floatingLayout = null;
     private FloatingListener floatingListener = new FloatingListener() {
@@ -50,6 +61,7 @@ public class MainActivity extends AppCompatActivity {
             btn.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
+                    logcatStop();
                     floatingLayout.destroy();
                     floatingLayout = null;
                 }
@@ -64,6 +76,49 @@ public class MainActivity extends AppCompatActivity {
                     onFloatingMinimum();
                 }
             });
+
+            Button b_del = view.findViewById(R.id.btn_log_delete);
+            b_del.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    BackgroundThread thread = new BackgroundThread(3);
+                    thread.start();
+
+                    Log.d(TAG,"log delete !!");
+                    logcatStop();
+                            //TODO 삭제 경로 지정 - 저장 경로와 같게
+                    String sCmd = "rm -rf " + logDirectory.getAbsolutePath();
+                    try {
+                        Runtime.getRuntime().exec(sCmd);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+
+            Button b_log_start = view.findViewById(R.id.btn_logcat_start);
+            b_log_start.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    BackgroundThread thread = new BackgroundThread(1);
+                    thread.start();
+                    Log.d(TAG,"logcat start !!");
+                    makeDir();
+                    logcatStart(logDirectory);
+                }
+            });
+
+            Button b_log_stop = view.findViewById(R.id.btn_logcat_stop);
+            b_log_stop.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    BackgroundThread thread = new BackgroundThread(2);
+                    thread.start();
+                    Log.d(TAG,"logcat stop !!");
+                    logcatStop();
+                }
+            });
+
         } // floating layout 내부 레이아웃 설정
 
         @Override
@@ -101,6 +156,9 @@ public class MainActivity extends AppCompatActivity {
             floatingLayout = new FloatingLayout(this, R.layout.float_layout);
             floatingLayout.setFloatingListener(floatingListener);
             floatingLayout.create();
+
+            BackgroundThread thread = new BackgroundThread(nStatus);
+            thread.start();
         }
     }
 
@@ -127,15 +185,15 @@ public class MainActivity extends AppCompatActivity {
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        BottomNavigationView navView = findViewById(R.id.nav_view);
-        // Passing each menu ID as a set of Ids because each
-        // menu should be considered as top level destinations.
-        AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(
-                R.id.navigation_home, R.id.navigation_dashboard, R.id.navigation_notifications)
-                .build();
-        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_activity_main);
-        NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
-        NavigationUI.setupWithNavController(binding.navView, navController);
+//        BottomNavigationView navView = findViewById(R.id.nav_view);
+//        // Passing each menu ID as a set of Ids because each
+//        // menu should be considered as top level destinations.
+//        AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(
+//                R.id.navigation_home, R.id.navigation_dashboard, R.id.navigation_notifications)
+//                .build();
+//        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_activity_main);
+//        NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
+//        NavigationUI.setupWithNavController(binding.navView, navController);
 
         //local code
         //TODO 파일 위치 지정
@@ -168,29 +226,45 @@ public class MainActivity extends AppCompatActivity {
     private void logcatStart(File logDirectory){
         //TODO : logcat class 생성하면서 저장할 파일 패스 전달
         logcat = new Logcat(logDirectory.getAbsolutePath());
-        logcat.process();      
+        logcat.start();
+    }
+
+    private void logcatStop() {
+        if(logcat != null) {
+            logcat.logcatStop();
+        }
     }
     
     private void makeDir(){
-        File logDirectory = null;
-        File appDirectory = null;
-        String appDirPath = null;
-        String logDirPath = null;
+//        File appDirectory = null;
+//        String appDirPath = null;
+//        String logDirPath = null;
 
         if( Build.VERSION.SDK_INT < 29) {
-            appDirPath = Environment.getExternalStorageDirectory()+ File.separator + TAG;
-            appDirectory = new File(appDirPath);
-            logDirPath = appDirectory + File.separator + "logs";
-            logDirectory = new File(logDirPath);
-            Log.d(TAG, "*** onCreate() - appDirectory :: "+appDirectory.getAbsolutePath());
-            //appDirectory 폴더 없을 시 생성
-            if ( !appDirectory.exists() ) {
-                if(!appDirectory.mkdirs()){
-                    Log.e(TAG,"it couldn't be make directory!!1");
-                    Log.e(TAG,"end");
-                    return ;
-                }
+
+            logDirectory = new File(sPath);
+            Log.d(TAG, "*** logDirectory :: " +logDirectory.getAbsolutePath());
+
+            //logDirectory 폴더 없을 시 생성
+            if (!logDirectory.exists()) {
+                logDirectory.mkdir();
+                Log.d(TAG, "*** make lodir");
+                return;
             }
+            //phone
+//            appDirPath = Environment.getExternalStorageDirectory()+ File.separator + TAG;
+//            appDirectory = new File(appDirPath);
+//            logDirPath = appDirectory + File.separator + "logs";
+//            logDirectory = new File(logDirPath);
+//            Log.d(TAG, "*** onCreate() - appDirectory :: "+appDirectory.getAbsolutePath());
+//            //appDirectory 폴더 없을 시 생성
+//            if ( !appDirectory.exists() ) {
+//                if(!appDirectory.mkdirs()){
+//                    Log.e(TAG,"it couldn't be make directory!!1");
+//                    Log.e(TAG,"end");
+//                    return ;
+//                }
+//            }
         }
         else {
             logDirectory = MainActivity.this.getExternalFilesDir("/logs");
@@ -207,7 +281,6 @@ public class MainActivity extends AppCompatActivity {
                 return ;
             }
         }
-        logcatStart(logDirectory);
     }
 
     //from oreo
@@ -274,5 +347,43 @@ public class MainActivity extends AppCompatActivity {
                 })
                 .create()
                 .show();
+    }
+
+    class BackgroundThread extends Thread {
+        String output = null;
+
+        final int ENUM_UNKNOWN      = 0;
+        final int ENUM_LOGCAT_START = 1;
+        final int ENUM_LOGCAT_STOP  = 2;
+        final int ENUM_LOGCAT_CLEAR = 3;
+
+        public BackgroundThread(int status) {
+            nStatus = status;
+        }
+
+        public void run() {
+            output = "UNKNOWN";
+            switch (nStatus) {
+                case ENUM_LOGCAT_START:
+                    output = "Logging ...";
+                    break;
+                case ENUM_LOGCAT_STOP:
+                    output = "Logging Stop.";
+                    break;
+                case ENUM_LOGCAT_CLEAR:
+                    output = "deleted Logs folder.";
+                    break;
+                default:
+                    break;
+            }
+
+            handler.post(new Runnable() {
+                @Override
+                public void run() {
+                    textView = FloatingService.view.findViewById(R.id.vt_status);
+                    textView.setText(output);
+                }
+            });
+        }
     }
 }

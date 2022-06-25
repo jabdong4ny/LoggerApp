@@ -1,4 +1,4 @@
-package com.assistant.loggerapp17.ui.dashboard;
+package com.assistant.loggerapp.ui.dashboard;
 
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -12,8 +12,7 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 
-import com.assistant.loggerapp17.R;
-import com.assistant.loggerapp17.databinding.FragmentDashboardBinding;
+import com.assistant.loggerapp.databinding.FragmentDashboardBinding;
 
 public class DashboardFragment extends Fragment {
 
