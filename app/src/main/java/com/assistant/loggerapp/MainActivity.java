@@ -247,7 +247,8 @@ public class MainActivity extends AppCompatActivity {
 
             //logDirectory 폴더 없을 시 생성
             if (!logDirectory.exists()) {
-                logDirectory.mkdir();
+                if(!logDirectory.mkdir())
+                    Toast.makeText(getApplicationContext(), "mkdir fail!!", Toast.LENGTH_SHORT).show();
                 Log.d(TAG, "*** make lodir");
                 return;
             }
@@ -276,6 +277,7 @@ public class MainActivity extends AppCompatActivity {
         //logDirectory 폴더 없을 시 생성
         if ( !logDirectory.exists() ) {
             if(!logDirectory.mkdirs()){
+                Toast.makeText(getApplicationContext(), "mkdir fail!!", Toast.LENGTH_SHORT).show();
                 Log.e(TAG,"it couldn't be make directory!!2");
                 Log.e(TAG,"end");
                 return ;
